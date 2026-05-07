@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Manufacturer · Supply Verify</title>
+<link rel="stylesheet" href="css/styles.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/wallet.js"></script>
+<script src="js/contract.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" data-sidebar></aside>
+  <div style="flex:1;display:flex;flex-direction:column">
+    <header class="topbar" data-topbar></header>
+    <main class="app-main">
+      <div id="content" class="card p-8 text-center text-slate-300">Connect your wallet to continue.</div>
+    </main>
+  </div>
+</div>
+<script>
+renderShell({ title: "Manufacturer Dashboard", active: "manufacturer" });
+window.Wallet.renderAllButtons();
+
+window.Wallet.onChange(async ({ address }) => {
+  const content = document.getElementById("content");
+  if (!address) {
+    content.className = "card p-8 text-center text-slate-300";
+    content.innerHTML = "Connect your wallet to continue.";
+    return;
+  }
+  content.className = "";
+  content.innerHTML = `<p style="color:#94a3b8">Loading…</p>`;
+  const role = await window.Chain.getRole(address);
+  let total = "—";
+  try { total = (await window.Chain.readContract().totalProducts()).toString(); } catch {}
+  content.innerHTML = `
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="card p-5">
+        <p class="text-xs text-slate-500">Connected as</p>
+        <p class="font-mono text-sm text-slate-100">${window.shortAddr(address)}</p>
+        <p class="mt-2 text-xs text-slate-500">Role</p>
+        <p class="font-medium capitalize text-slate-100">${role}</p>
+      </div>
+      <div class="card p-5">
+        <p class="text-xs text-slate-500">Total products on-chain</p>
+        <p class="text-2xl font-semibold text-white">${total}</p>
+      </div>
+      <a href="products-new.html" class="card p-5 hover:shadow-lg transition flex items-center gap-3" style="text-decoration:none;color:inherit">
+        <i data-lucide="plus-circle" style="width:1.5rem;height:1.5rem;color:#2563eb"></i>
+        <div>
+          <p class="font-medium text-slate-100">Register product</p>
+          <p class="text-xs text-slate-500">Mint a new supply chain entry.</p>
+        </div>
+      </a>
+      <a href="scan.html" class="card p-5 hover:shadow-lg transition flex items-center gap-3 md:col-span-3" style="text-decoration:none;color:inherit">
+        <i data-lucide="package" style="width:1.5rem;height:1.5rem;color:#2563eb"></i>
+        <div>
+          <p class="font-medium text-slate-100">Look up a product</p>
+          <p class="text-xs text-slate-500">Scan a QR or paste a product ID to view its history.</p>
+        </div>
+      </a>
+    </div>`;
+  lucide.createIcons();
+});
+</script>
+</body>
+</html>

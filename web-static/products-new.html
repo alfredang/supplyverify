@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Register Product · Supply Verify</title>
+<link rel="stylesheet" href="css/styles.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/wallet.js"></script>
+<script src="js/contract.js"></script>
+<script src="js/ipfs.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" data-sidebar></aside>
+  <div style="flex:1;display:flex;flex-direction:column">
+    <header class="topbar" data-topbar></header>
+    <main class="app-main">
+      <div id="content"></div>
+    </main>
+  </div>
+</div>
+<script>
+renderShell({ title: "Register Product", active: "register" });
+window.Wallet.renderAllButtons();
+const content = document.getElementById("content");
+
+function renderForm() {
+  content.innerHTML = `
+    <form id="form" class="card p-6 max-w-2xl space-y-4">
+      <div class="grid md:grid-cols-2 gap-4">
+        ${field("name","Product name",true)}
+        ${field("manufacturerName","Manufacturer name")}
+        ${field("serial","Serial number",true)}
+        ${field("batch","Batch number",true)}
+        ${field("category","Category")}
+        ${field("origin","Origin country")}
+        ${field("expiresAt","Expiry date","date")}
+        <div>
+          <label class="text-xs text-slate-500">Product image</label>
+          <input id="image" type="file" accept="image/*" class="mt-1 block w-full text-sm text-slate-200" />
+        </div>
+      </div>
+      <button type="submit" id="submitBtn" class="btn-primary">Register on-chain</button>
+    </form>`;
+  document.getElementById("form").onsubmit = submit;
+}
+
+function field(id, label, requiredOrType) {
+  const required = requiredOrType === true;
+  const type = typeof requiredOrType === "string" ? requiredOrType : "text";
+  return `<div>
+    <label class="text-xs text-slate-500">${label} ${required ? '<span style="color:#ef4444">*</span>' : ''}</label>
+    <input id="${id}" type="${type}" ${required?'required':''} class="field mt-1" />
+  </div>`;
+}
+
+async function submit(e) {
+  e.preventDefault();
+  const f = (id) => document.getElementById(id).value.trim();
+  const name = f("name"), serial = f("serial"), batch = f("batch");
+  if (!name || !serial || !batch) return Toast.error("Name, serial, and batch are required");
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true; btn.textContent = "Registering…";
+  try {
+    const imgFile = document.getElementById("image").files[0];
+    Toast.info("Uploading metadata to IPFS…");
+    const imageCid = imgFile ? await window.IPFS.uploadFile(imgFile) : null;
+    const metadataCid = await window.IPFS.uploadJson({
+      name, serial, batch, manufacturerName: f("manufacturerName"),
+      category: f("category"), origin: f("origin"), expiresAt: f("expiresAt"),
+      imageCid, registeredAt: new Date().toISOString(),
+    });
+    const id = window.Chain.productIdFrom(serial, batch);
+    const exp = f("expiresAt") ? Math.floor(new Date(f("expiresAt")).getTime() / 1000) : 0;
+    Toast.info("Confirm transaction in MetaMask…");
+    const tx = await window.Chain.writeContract().registerProduct(id, exp, metadataCid);
+    await tx.wait();
+    Toast.success(`Registered (tx ${tx.hash.slice(0,10)}…)`);
+    showSuccess(id);
+  } catch (e) {
+    Toast.error(e.shortMessage || e.message || "Registration failed");
+  } finally {
+    btn.disabled = false; btn.textContent = "Register on-chain";
+  }
+}
+
+async function showSuccess(id) {
+  const verifyUrl = `${location.origin}${location.pathname.replace(/[^/]+$/, "")}verify-detail.html?id=${id}`;
+  content.innerHTML = `
+    <div class="card p-6 max-w-xl">
+      <h2 class="font-semibold text-lg text-white">Product registered</h2>
+      <p class="text-sm text-slate-300 mt-1">Share this QR code on packaging — anyone can verify authenticity.</p>
+      <div class="mt-5 flex flex-col items-center">
+        <canvas id="qr" style="background:white;padding:.5rem;border-radius:.5rem"></canvas>
+        <a href="${verifyUrl}" target="_blank" class="text-xs mt-2" style="color:#60a5fa">Open verify URL</a>
+      </div>
+      <p class="mt-4 text-xs font-mono break-all text-slate-500">${id}</p>
+      <div class="mt-5 flex gap-2">
+        <a href="product.html?id=${id}" class="btn-primary" style="text-decoration:none;display:inline-block">Open detail</a>
+        <button id="again" class="btn-secondary">Register another</button>
+      </div>
+    </div>`;
+  await QRCode.toCanvas(document.getElementById("qr"), verifyUrl, { width: 220, margin: 1 });
+  document.getElementById("again").onclick = renderForm;
+}
+
+window.Wallet.onChange(({ address }) => {
+  if (!address) {
+    content.innerHTML = `<div class="card p-8 text-center text-slate-300">Connect a manufacturer wallet to continue.</div>`;
+    return;
+  }
+  renderForm();
+});
+</script>
+</body>
+</html>

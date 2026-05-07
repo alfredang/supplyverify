@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Connect · Supply Verify</title>
+<link rel="stylesheet" href="css/styles.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/wallet.js"></script>
+<script src="js/contract.js"></script>
+</head>
+<body>
+<div class="min-h-screen flex items-center justify-center p-6">
+  <div class="card p-8 max-w-md w-full text-center">
+    <i data-lucide="wallet" class="mx-auto" style="width:2.5rem;height:2.5rem;color:#2563eb"></i>
+    <h1 class="mt-3 text-xl font-semibold text-white">Connect wallet</h1>
+    <p class="mt-1 text-sm text-slate-300">MetaMask is required. We'll detect your role automatically.</p>
+    <div class="mt-6 flex justify-center" data-wallet-button></div>
+  </div>
+</div>
+<script>
+window.Wallet.renderAllButtons();
+lucide.createIcons();
+window.Wallet.onChange(async ({ address }) => {
+  if (!address) return;
+  const role = await window.Chain.getRole(address);
+  const target =
+    role === "admin" ? "admin.html" :
+    role === "manufacturer" ? "manufacturer.html" :
+    role === "distributor" || role === "retailer" ? "manufacturer.html" :
+    "index.html";
+  location.href = target;
+});
+</script>
+</body>
+</html>

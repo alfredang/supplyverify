@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Verify · Supply Verify</title>
+<link rel="stylesheet" href="css/styles.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/wallet.js"></script>
+<script src="js/contract.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100">
+
+<header class="bg-slate-900 border-b border-slate-800">
+  <div class="max-w-3xl mx-auto px-6 py-4 flex items-center gap-2">
+    <a href="index.html" class="flex items-center gap-2 font-semibold text-white" style="text-decoration:none">
+      <i data-lucide="link-2" class="w-5 h-5" style="color:#3b82f6"></i> Supply Verify
+    </a>
+  </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-6 py-8">
+  <div id="content" class="text-slate-300">Verifying on-chain…</div>
+</main>
+
+<script>
+const id = new URLSearchParams(location.search).get("id");
+const content = document.getElementById("content");
+lucide.createIcons();
+
+(async () => {
+  if (!id || !/^0x[a-fA-F0-9]{64}$/.test(id)) {
+    return notFound();
+  }
+  try {
+    const c = window.Chain.readContract();
+    const [verifyRes, history] = await Promise.all([c.verify(id), c.getHistory(id)]);
+    const product = verifyRes[0];
+    const exists = verifyRes[1];
+    if (!exists) return notFound();
+    render(product, history);
+  } catch (e) {
+    notFound();
+  }
+})();
+
+function notFound() {
+  content.innerHTML = `
+    <div class="card p-8 text-center">
+      <i data-lucide="shield-alert" class="mx-auto" style="width:2.5rem;height:2.5rem;color:#ef4444"></i>
+      <h1 class="mt-3 text-xl font-semibold text-white">Not authentic</h1>
+      <p class="text-slate-300 mt-1 text-sm">No product matches this ID on-chain. Treat it as suspicious.</p>
+      <p class="mt-3 font-mono text-xs break-all text-slate-500">${id || ""}</p>
+    </div>`;
+  lucide.createIcons();
+}
+
+function render(p, history) {
+  const flagged = p.flagged;
+  content.innerHTML = `
+    <div class="card p-6" style="${flagged ? "border-color:#ef4444" : ""}">
+      <div class="flex items-center gap-3">
+        <i data-lucide="${flagged ? "shield-alert" : "shield-check"}" style="width:2rem;height:2rem;color:${flagged ? "#ef4444" : "#10b981"}"></i>
+        <div>
+          <h1 class="text-xl font-semibold text-white">${flagged ? "Flagged" : "Authentic product"}</h1>
+          <p class="text-sm text-slate-400">Verified on Ethereum at ${window.formatDate(p.producedAt)}</p>
+        </div>
+        <div style="margin-left:auto">${window.statusBadge(p.status)}</div>
+      </div>
+      <dl class="mt-6 grid sm:grid-cols-2 gap-4 text-sm">
+        ${row("Product ID", `<span class="font-mono text-xs break-all">${id}</span>`)}
+        ${row("Manufacturer", `<a href="${window.explorerAddr(p.manufacturer)}" target="_blank" style="color:#60a5fa;text-decoration:none">${window.shortAddr(p.manufacturer)}</a>`)}
+        ${row("Current owner", `<a href="${window.explorerAddr(p.currentOwner)}" target="_blank" style="color:#60a5fa;text-decoration:none">${window.shortAddr(p.currentOwner)}</a>`)}
+        ${row("Expires", Number(p.expiresAt) ? window.formatDate(p.expiresAt) : "—")}
+        ${row("Metadata CID", `<span class="font-mono text-xs break-all">${p.metadataCID}</span>`)}
+      </dl>
+    </div>
+    <section class="mt-8">
+      <h2 class="font-semibold mb-3 text-slate-100">Movement history</h2>
+      ${window.renderTimeline(history)}
+    </section>`;
+  lucide.createIcons();
+}
+
+function row(label, value) {
+  return `<div><dt class="text-xs text-slate-500">${label}</dt><dd>${value}</dd></div>`;
+}
+</script>
+</body>
+</html>

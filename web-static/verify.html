@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Verify Product · Supply Verify</title>
+<link rel="stylesheet" href="css/styles.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/wallet.js"></script>
+<script src="js/contract.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" data-sidebar></aside>
+  <div style="flex:1;display:flex;flex-direction:column">
+    <header class="topbar" data-topbar></header>
+    <main class="app-main">
+      <div class="grid md:grid-cols-2 gap-4">
+        <form id="bySerial" class="card p-6">
+          <div class="flex items-center gap-2 mb-3">
+            <i data-lucide="shield-check" style="width:1.25rem;height:1.25rem;color:#2563eb"></i>
+            <h2 class="font-semibold text-slate-100">Look up by serial + batch</h2>
+          </div>
+          <input id="serial" class="field mb-2" placeholder="Serial number" />
+          <input id="batch" class="field mb-3" placeholder="Batch number" />
+          <button class="btn-primary">Verify</button>
+        </form>
+        <form id="byId" class="card p-6">
+          <h2 class="font-semibold mb-3 text-slate-100">Look up by product ID</h2>
+          <input id="rawId" class="field font-mono mb-3" placeholder="0x… (32-byte product ID)" />
+          <button class="btn-primary">Verify</button>
+        </form>
+      </div>
+    </main>
+  </div>
+</div>
+<script>
+renderShell({ title: "Verify Product", active: "verify" });
+window.Wallet.renderAllButtons();
+lucide.createIcons();
+
+document.getElementById("bySerial").onsubmit = (e) => {
+  e.preventDefault();
+  const s = document.getElementById("serial").value.trim();
+  const b = document.getElementById("batch").value.trim();
+  if (!s || !b) return;
+  location.href = `verify-detail.html?id=${window.Chain.productIdFrom(s, b)}`;
+};
+document.getElementById("byId").onsubmit = (e) => {
+  e.preventDefault();
+  const id = document.getElementById("rawId").value.trim();
+  if (!/^0x[a-fA-F0-9]{64}$/.test(id)) return Toast.error("Invalid id");
+  location.href = `verify-detail.html?id=${id}`;
+};
+</script>
+</body>
+</html>

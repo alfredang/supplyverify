@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Product Detail · Supply Verify</title>
+<link rel="stylesheet" href="css/styles.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/wallet.js"></script>
+<script src="js/contract.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" data-sidebar></aside>
+  <div style="flex:1;display:flex;flex-direction:column">
+    <header class="topbar" data-topbar></header>
+    <main class="app-main">
+      <div id="content" class="text-slate-300">Loading…</div>
+    </main>
+  </div>
+</div>
+<script>
+renderShell({ title: "Product Detail", active: "" });
+window.Wallet.renderAllButtons();
+
+const id = new URLSearchParams(location.search).get("id");
+const content = document.getElementById("content");
+
+async function load() {
+  if (!id || !/^0x[a-fA-F0-9]{64}$/.test(id)) {
+    content.innerHTML = `<div class="card p-8 text-center text-slate-300">Missing or invalid product id.</div>`;
+    return;
+  }
+  try {
+    const c = window.Chain.readContract();
+    const [verifyRes, history] = await Promise.all([c.verify(id), c.getHistory(id)]);
+    const product = verifyRes[0];
+    const exists = verifyRes[1];
+    if (!exists) {
+      content.innerHTML = `<div class="card p-8 text-center text-slate-300">Product not found on-chain.</div>`;
+      return;
+    }
+    render(product, history);
+  } catch (e) {
+    content.innerHTML = `<div class="card p-8 text-center" style="color:#fca5a5">Read failed: ${e.message}</div>`;
+  }
+}
+
+function render(p, history) {
+  const verifyUrl = `${location.origin}${location.pathname.replace(/[^/]+$/, "")}verify-detail.html?id=${id}`;
+  const { address } = window.Wallet.get();
+  const isOwner = address && address.toLowerCase() === p.currentOwner.toLowerCase();
+
+  content.innerHTML = `
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="md:col-span-2 card p-6">
+        <div class="flex items-start justify-between flex-wrap gap-3">
+          <div>
+            <p class="text-xs text-slate-500">Product ID</p>
+            <p class="font-mono text-xs break-all text-slate-100">${id}</p>
+          </div>
+          ${window.statusBadge(p.status)}
+        </div>
+        <dl class="mt-5 grid sm:grid-cols-2 gap-4 text-sm">
+          ${info("Current owner", window.shortAddr(p.currentOwner))}
+          ${info("Manufacturer", window.shortAddr(p.manufacturer))}
+          ${info("Produced", window.formatDate(p.producedAt))}
+          ${info("Expires", Number(p.expiresAt) ? window.formatDate(p.expiresAt) : "—")}
+          ${info("Metadata CID", p.metadataCID)}
+          ${info("Flagged", p.flagged ? "YES" : "No")}
+        </dl>
+        ${isOwner ? ownerControls() : ""}
+        <div class="mt-8">
+          <h3 class="font-semibold mb-3 text-slate-100">Movement history</h3>
+          <div id="timeline">${window.renderTimeline(history)}</div>
+        </div>
+      </div>
+      <aside class="card p-6 self-start">
+        <h3 class="font-semibold text-slate-100">Public QR</h3>
+        <p class="text-xs text-slate-500 mt-1">Scan to verify.</p>
+        <div class="mt-4 flex justify-center">
+          <canvas id="qr" style="background:white;padding:.5rem;border-radius:.5rem"></canvas>
+        </div>
+      </aside>
+    </div>`;
+  QRCode.toCanvas(document.getElementById("qr"), verifyUrl, { width: 180, margin: 1 });
+  lucide.createIcons();
+  if (isOwner) wireOwnerControls();
+}
+
+function info(label, value) {
+  return `<div><dt class="text-xs text-slate-500">${label}</dt><dd class="font-mono text-xs break-all text-slate-100">${value}</dd></div>`;
+}
+
+function ownerControls() {
+  const opts = window.STATUS_LABELS.map((l, i) => `<option value="${i}">${l}</option>`).join("");
+  return `
+    <div class="mt-6 pt-6" style="border-top:1px solid #1e293b">
+      <h3 class="font-semibold mb-3 text-slate-100">Update status</h3>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <select id="newStatus" class="field">${opts}</select>
+        <input id="loc" class="field" placeholder="Location" />
+        <input id="note" class="field sm:col-span-2" placeholder="Note" />
+      </div>
+      <div class="mt-3 flex gap-2">
+        <button id="submitStatus" class="btn-primary">Submit</button>
+        <a href="transfer.html?id=${id}" class="btn-secondary" style="text-decoration:none;display:inline-block">Transfer ownership →</a>
+      </div>
+    </div>`;
+}
+
+function wireOwnerControls() {
+  document.getElementById("submitStatus").onclick = async () => {
+    const s = Number(document.getElementById("newStatus").value);
+    const loc = document.getElementById("loc").value;
+    const note = document.getElementById("note").value;
+    const btn = document.getElementById("submitStatus");
+    btn.disabled = true; btn.textContent = "Submitting…";
+    try {
+      const tx = await window.Chain.writeContract().updateStatus(id, s, loc, note);
+      Toast.info("Submitted, waiting for confirmation…");
+      await tx.wait();
+      Toast.success(`Updated (tx ${tx.hash.slice(0,10)}…)`);
+      load();
+    } catch (e) {
+      Toast.error(e.shortMessage || e.message || "Failed");
+    } finally {
+      btn.disabled = false; btn.textContent = "Submit";
+    }
+  };
+}
+
+window.Wallet.onChange(load);
+load();
+</script>
+</body>
+</html>
