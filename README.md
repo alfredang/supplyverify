@@ -72,12 +72,20 @@ Edit [`web-static/js/config.js`](web-static/js/config.js) — values are inlined
 window.APP_CONFIG = {
   CHAIN_ID: 11155111,                 // 11155111 Sepolia, 31337 Hardhat local
   CHAIN_NAME: "Sepolia",
-  RPC_URL: "https://rpc.sepolia.org",
+  RPC_URLS: [                         // viem-style FallbackProvider list — first that responds wins
+    "https://ethereum-sepolia-rpc.publicnode.com",
+    "https://sepolia.gateway.tenderly.co",
+    "https://rpc.sepolia.org",
+  ],
   CONTRACT_ADDRESS: "0x…",            // paste the deployed SupplyChain address
   WEB3_STORAGE_TOKEN: "",             // optional — empty falls back to mock CIDs
   EXPLORER: "https://sepolia.etherscan.io",
 };
 ```
+
+While `CONTRACT_ADDRESS` is the zero address, every dashboard page renders a **"Demo not deployed"** banner explaining what's needed; chain reads/writes are skipped instead of throwing cryptic errors. Once a real address is set, the banner disappears and the site goes fully live.
+
+> **Cache-busting:** all `<script src="js/...">` and `<link href="css/...">` tags carry a `?v=N` query string. Bump the number whenever you edit `js/*.js` or `css/styles.css` so visitors fetch the new build (Pages and browsers otherwise hold the old version for ~10 min).
 
 ## 3. Pages
 
@@ -95,6 +103,12 @@ window.APP_CONFIG = {
 | Scan | `scan.html` | Camera-based QR scanner |
 
 Dynamic routes use `?id=…` query strings — no router required.
+
+The public verify page (`verify-detail.html`) distinguishes three failure modes instead of one:
+
+- **Demo not deployed** — `CONTRACT_ADDRESS` is the zero address.
+- **Could not reach the network** — RPC call failed; all configured `RPC_URLS` were unreachable.
+- **Not authentic** — the contract responded but no product matches that id.
 
 ## 4. Smart contract API
 
@@ -121,7 +135,17 @@ Statuses: `Manufactured`, `InWarehouse`, `InTransit`, `ReceivedByDistributor`, `
 
 To deploy elsewhere (Netlify, Cloudflare Pages, S3, nginx) just point the host at `web-static/` — no build step.
 
-## 6. End-to-end smoke test
+## 6. Frontend JS modules
+
+| File | Responsibility |
+| --- | --- |
+| [`web-static/js/config.js`](web-static/js/config.js) | Chain id, RPC fallback list, contract address, web3.storage token, status labels, ABI |
+| [`web-static/js/wallet.js`](web-static/js/wallet.js) | MetaMask connect, network switch, account/chain change events; exposes `Wallet.get()`, `Wallet.onChange()`, `Wallet.getReadProvider()` (an ethers `FallbackProvider` over the configured RPCs); the connected wallet button copies the address on click |
+| [`web-static/js/contract.js`](web-static/js/contract.js) | `Chain.readContract()` (read-only over public RPC), `Chain.writeContract()` (signer-bound), `Chain.productIdFrom(serial, batch)`, `Chain.getRole(address)` |
+| [`web-static/js/ipfs.js`](web-static/js/ipfs.js) | `IPFS.uploadFile`, `IPFS.uploadJson` against web3.storage; falls back to `mock://` CIDs when the token is empty so the form still works for demos |
+| [`web-static/js/ui.js`](web-static/js/ui.js) | `Toast.{info,success,error}`, sidebar/topbar injection (`renderShell`), `renderTimeline`, `statusBadge`, and the "Demo not deployed" banner (`renderConfigBanner`) auto-shown when `CONTRACT_ADDRESS` is unconfigured |
+
+## 7. End-to-end smoke test
 
 1. `cd contracts && npm test` — all green.
 2. Deploy to Sepolia, paste the address into `web-static/js/config.js`.
@@ -132,14 +156,14 @@ To deploy elsewhere (Netlify, Cloudflare Pages, S3, nginx) just point the host a
 7. Distributor wallet sees the owner controls on the detail page; submit a status update. Reload the public verify page — the new checkpoint appears with an Etherscan-linkable actor.
 8. Try updating from a third, unrelated wallet → tx reverts with `not current owner`, UI shows an error toast.
 
-## 7. Security notes
+## 8. Security notes
 
 - All on-chain writes are gated by OpenZeppelin `AccessControl` roles or an `onlyOwnerOf(productId)` modifier.
 - `nonReentrant` on transfer/status as defensive hardening (no value flows today).
 - Inputs are validated client-side and on-chain (`require` statements).
 - `.env*` files and `node_modules/` are gitignored. Never commit `PRIVATE_KEY` or any IPFS upload token.
 
-## 8. Future work
+## 9. Future work
 
 - NFT-style certificate of authenticity per product
 - CSV batch import for manufacturers
