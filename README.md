@@ -16,7 +16,7 @@ Reference inspiration: <https://github.com/shang-yi-qian/Product-Verify>
   - `qrcode` for QR generation, `html5-qrcode` for camera scanning
   - `lucide` icons
   - MetaMask via `window.ethereum`
-- **Smart contract** — Solidity 0.8.24 using OpenZeppelin `AccessControl` + `ReentrancyGuard`. Hardhat is used only for compilation/testing/deployment of the contract; it is not part of the runtime.
+- **Smart contract** — Solidity 0.8.24 using OpenZeppelin `AccessControl` + `ReentrancyGuard`. Compiled and deployed via [Remix](https://remix.ethereum.org) — the repo ships **no Node toolchain** at all.
 - **Network** — Sepolia testnet (chainId 11155111). Hardhat local network supported for development.
 - **Hosting** — GitHub Pages, deployed automatically via GitHub Actions on every push to `main` that touches `web-static/`.
 
@@ -24,34 +24,22 @@ Reference inspiration: <https://github.com/shang-yi-qian/Product-Verify>
 
 ```
 supplychain/
-├── contracts/      # Hardhat project — SupplyChain.sol + tests + deploy script
+├── contracts/      # Just SupplyChain.sol + a Remix walkthrough — no Node tooling
 └── web-static/     # Frontend — pure HTML/CSS/JS (deployed to GitHub Pages)
 ```
 
 ## 1. Smart contract
 
-```bash
-cd contracts
-cp .env.example .env          # fill SEPOLIA_RPC_URL, PRIVATE_KEY, ETHERSCAN_API_KEY
-npm install
-npm run compile
-npm test                      # all tests must pass
-```
+The single source file is [`contracts/contracts/SupplyChain.sol`](contracts/contracts/SupplyChain.sol). The repo intentionally ships **no `package.json`, no `node_modules`, no Hardhat config** — see [`contracts/README.md`](contracts/README.md) for the Remix-based compile/deploy walkthrough.
 
-### Local deploy
+Quick path:
 
-```bash
-npm run node                  # in one terminal: starts hardhat node on :8545
-npm run deploy:local          # in another: deploys + prints address
-```
+1. Open <https://remix.ethereum.org>, drop in `SupplyChain.sol`.
+2. Compile with Solidity `0.8.24`.
+3. **Deploy & run** → *Injected Provider — MetaMask* on Sepolia → constructor `admin` = your wallet.
+4. Copy the deployed address into [`web-static/js/config.js`](web-static/js/config.js) → `CONTRACT_ADDRESS`.
 
-### Sepolia deploy
-
-```bash
-npm run deploy:sepolia
-```
-
-The deployer wallet is granted `DEFAULT_ADMIN_ROLE`. Use the admin page (or `grantRole` directly) to authorise manufacturer / distributor / retailer wallets.
+The deployer wallet automatically holds `DEFAULT_ADMIN_ROLE` and can grant manufacturer / distributor / retailer roles either via the admin page or directly from Remix.
 
 ## 2. Frontend
 
@@ -130,7 +118,7 @@ Statuses: `Manufactured`, `InWarehouse`, `InTransit`, `ReceivedByDistributor`, `
 
 ## 5. Deployment
 
-- **Contract** → Sepolia via `npm run deploy:sepolia`. Optional: verify on Etherscan.
+- **Contract** → deploy via Remix (see [`contracts/README.md`](contracts/README.md)). Optional: verify on Etherscan from the Remix plugin.
 - **Frontend** → already deployed. Any push to `main` that changes `web-static/` triggers [`.github/workflows/pages.yml`](.github/workflows/pages.yml), which uploads `web-static/` to GitHub Pages.
 
 To deploy elsewhere (Netlify, Cloudflare Pages, S3, nginx) just point the host at `web-static/` — no build step.
@@ -147,21 +135,20 @@ To deploy elsewhere (Netlify, Cloudflare Pages, S3, nginx) just point the host a
 
 ## 7. End-to-end smoke test
 
-1. `cd contracts && npm test` — all green.
-2. Deploy to Sepolia, paste the address into `web-static/js/config.js`.
-3. Open the live site, connect the admin wallet → `admin.html` → grant `MANUFACTURER_ROLE` to a second wallet.
-4. Switch to the manufacturer wallet → `products-new.html` → register a product. The QR + product ID render.
-5. Scan the QR with a phone (or open `verify-detail.html?id=…`) → public page loads without a wallet, shows status.
-6. From the manufacturer wallet, open `transfer.html?id=…` → transfer to a distributor wallet.
-7. Distributor wallet sees the owner controls on the detail page; submit a status update. Reload the public verify page — the new checkpoint appears with an Etherscan-linkable actor.
-8. Try updating from a third, unrelated wallet → tx reverts with `not current owner`, UI shows an error toast.
+1. Deploy `SupplyChain.sol` to Sepolia in Remix; paste the address into `web-static/js/config.js`.
+2. Open the live site, connect the admin wallet → `admin.html` → grant `MANUFACTURER_ROLE` to a second wallet.
+3. Switch to the manufacturer wallet → `products-new.html` → register a product. The QR + product ID render.
+4. Scan the QR with a phone (or open `verify-detail.html?id=…`) → public page loads without a wallet, shows status.
+5. From the manufacturer wallet, open `transfer.html?id=…` → transfer to a distributor wallet.
+6. Distributor wallet sees the owner controls on the detail page; submit a status update. Reload the public verify page — the new checkpoint appears with an Etherscan-linkable actor.
+7. Try updating from a third, unrelated wallet → tx reverts with `not current owner`, UI shows an error toast.
 
 ## 8. Security notes
 
 - All on-chain writes are gated by OpenZeppelin `AccessControl` roles or an `onlyOwnerOf(productId)` modifier.
 - `nonReentrant` on transfer/status as defensive hardening (no value flows today).
 - Inputs are validated client-side and on-chain (`require` statements).
-- `.env*` files and `node_modules/` are gitignored. Never commit `PRIVATE_KEY` or any IPFS upload token.
+- `.env*` files are gitignored. Never commit `PRIVATE_KEY` or any IPFS upload token.
 
 ---
 
