@@ -70,6 +70,8 @@ window.renderShell = function ({ title, active }) {
     `;
   }
   if (window.lucide) window.lucide.createIcons();
+  // Auto-show config banner on dashboard pages
+  setTimeout(() => window.renderConfigBanner && window.renderConfigBanner(), 0);
 };
 
 // Yellow banner shown when CONTRACT_ADDRESS is not configured.
@@ -91,8 +93,6 @@ window.renderConfigBanner = function () {
     </div>`;
   main.insertBefore(div, main.firstChild);
   if (window.lucide) window.lucide.createIcons();
-  // Auto-show config banner on dashboard pages
-  setTimeout(() => window.renderConfigBanner && window.renderConfigBanner(), 0);
 };
 
 window.statusBadge = function (status) {
