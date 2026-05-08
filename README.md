@@ -163,13 +163,6 @@ To deploy elsewhere (Netlify, Cloudflare Pages, S3, nginx) just point the host a
 - Inputs are validated client-side and on-chain (`require` statements).
 - `.env*` files and `node_modules/` are gitignored. Never commit `PRIVATE_KEY` or any IPFS upload token.
 
-## 9. Future work
-
-- NFT-style certificate of authenticity per product
-- CSV batch import for manufacturers
-- Multi-chain support (Polygon, Base, Arbitrum)
-- Customer ownership claim flow after retail purchase
-
 ---
 
 Powered by [Tertiary Infotech Academy Pte Ltd](https://www.tertiarycourses.com.sg/).
