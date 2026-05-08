@@ -28,20 +28,74 @@ supplychain/
 └── web-static/     # Frontend — pure HTML/CSS/JS (deployed to GitHub Pages)
 ```
 
-## 1. Smart contract
+## 1. Setup — get Sepolia keys, ETH, and (optional) services
 
-The single source file is [`contracts/contracts/SupplyChain.sol`](contracts/contracts/SupplyChain.sol). The repo intentionally ships **no `package.json`, no `node_modules`, no Hardhat config** — see [`contracts/README.md`](contracts/README.md) for the Remix-based compile/deploy walkthrough.
+You need three things before deploying anything: a **wallet**, some **Sepolia test ETH**, and (optionally) a **dedicated RPC endpoint**. None of these cost real money — Sepolia is a free testnet.
 
-Quick path:
+### 1.1 Install MetaMask
 
-1. Open <https://remix.ethereum.org>, drop in `SupplyChain.sol`.
-2. Compile with Solidity `0.8.24`.
-3. **Deploy & run** → *Injected Provider — MetaMask* on Sepolia → constructor `admin` = your wallet.
-4. Copy the deployed address into [`web-static/js/config.js`](web-static/js/config.js) → `CONTRACT_ADDRESS`.
+<https://metamask.io/download/> → install the browser extension → create a wallet.
 
-The deployer wallet automatically holds `DEFAULT_ADMIN_ROLE` and can grant manufacturer / distributor / retailer roles either via the admin page or directly from Remix.
+> **Use a fresh MetaMask account dedicated to this demo.** Don't deploy with a wallet that holds mainnet funds — test contracts get redeployed often and you don't want to leak your main private key into a `.env` file or paste it into Remix.
 
-## 2. Frontend
+In MetaMask, switch to the **Sepolia** network (top dropdown → "Show test networks" if hidden → Sepolia).
+
+### 1.2 Get Sepolia test ETH from a faucet
+
+You need a small amount of ETH (less than 0.01) to pay gas for deployment + role grants. Free faucets, in order of reliability:
+
+| Faucet | Notes |
+| --- | --- |
+| [Alchemy Sepolia faucet](https://www.alchemy.com/faucets/ethereum-sepolia) | Most reliable; requires a free Alchemy account |
+| [QuickNode faucet](https://faucet.quicknode.com/ethereum/sepolia) | No login, but rate-limited |
+| [Infura faucet](https://www.infura.io/faucet/sepolia) | Requires Infura account |
+| [sepoliafaucet.com](https://sepoliafaucet.com/) | Mirror of Alchemy's |
+
+Paste your MetaMask address, solve the captcha, wait ~30 seconds. Verify the balance shows up in MetaMask.
+
+### 1.3 (Optional) Sign up for a dedicated RPC endpoint
+
+The frontend already falls back through three free public RPCs (`publicnode`, `tenderly`, `rpc.sepolia.org`), so a personal endpoint is **not required**. Only sign up if you hit rate limits.
+
+| Provider | Free tier |
+| --- | --- |
+| [Alchemy](https://alchemy.com/) | Create app → network = Sepolia → copy HTTPS URL |
+| [Infura](https://app.infura.io/) | Create project → endpoints → Sepolia → copy URL |
+
+Add the URL to the front of `RPC_URLS` in [`web-static/js/config.js`](web-static/js/config.js).
+
+### 1.4 (Optional) web3.storage token for IPFS uploads
+
+Manufacturer registration tries to upload product metadata + image to IPFS. If you skip this, the form still works — uploads return `mock://…` CIDs and the on-chain record points to nothing real.
+
+To enable real IPFS: <https://web3.storage> → sign up → create an API token → paste into `WEB3_STORAGE_TOKEN` in `config.js`.
+
+### 1.5 Where the deployer "private key" comes in
+
+For browser-based deployment via Remix you **don't need to export your private key** — Remix uses MetaMask's *Injected Provider* and signs transactions directly in the extension. The private key never leaves MetaMask.
+
+If you ever want to deploy from a script (Hardhat / Foundry / a bot), then export it: MetaMask → click your account → ⋮ → *Account details* → *Show private key*. Treat that string like a credit card number; never commit it.
+
+## 2. Smart contract
+
+The single source file is [`contracts/contracts/SupplyChain.sol`](contracts/contracts/SupplyChain.sol). The repo intentionally ships **no `package.json`, no `node_modules`, no Hardhat config** — see [`contracts/README.md`](contracts/README.md) for the full Remix walkthrough.
+
+Quick path (assumes you finished section 1):
+
+1. Open <https://remix.ethereum.org>, drag-and-drop `SupplyChain.sol` into the file explorer.
+2. **Solidity compiler** tab → version `0.8.24` → **Compile SupplyChain.sol**.
+3. **Deploy & run transactions** tab:
+   - **Environment**: *Injected Provider — MetaMask*
+   - Confirm MetaMask is on Sepolia
+   - **Contract**: `SupplyChain`
+   - Constructor arg `admin` = your deployer wallet address (this gets `DEFAULT_ADMIN_ROLE`)
+   - Click **Deploy**, confirm in MetaMask
+4. Copy the deployed contract address (visible under "Deployed Contracts" in Remix).
+5. Paste it into [`web-static/js/config.js`](web-static/js/config.js) as `CONTRACT_ADDRESS`. Bump the `?v=N` query string in `web-static/*.html` so Pages serves the new build immediately. Commit and push.
+
+The deployer wallet automatically holds `DEFAULT_ADMIN_ROLE` and can grant manufacturer / distributor / retailer roles either via the in-app admin page or directly from Remix using `grantRole(role, wallet)`.
+
+## 3. Frontend
 
 The frontend is plain static files — open them with any HTTP server. The camera QR scanner needs an `http(s)://` origin (it won't work over `file://`).
 
@@ -75,7 +129,7 @@ While `CONTRACT_ADDRESS` is the zero address, every dashboard page renders a **"
 
 > **Cache-busting:** all `<script src="js/...">` and `<link href="css/...">` tags carry a `?v=N` query string. Bump the number whenever you edit `js/*.js` or `css/styles.css` so visitors fetch the new build (Pages and browsers otherwise hold the old version for ~10 min).
 
-## 3. Pages
+## 4. Pages
 
 | Page | URL | Purpose |
 | --- | --- | --- |
@@ -98,7 +152,7 @@ The public verify page (`verify-detail.html`) distinguishes three failure modes 
 - **Could not reach the network** — RPC call failed; all configured `RPC_URLS` were unreachable.
 - **Not authentic** — the contract responded but no product matches that id.
 
-## 4. Smart contract API
+## 5. Smart contract API
 
 ```
 registerProduct(bytes32 id, uint64 expiresAt, string metadataCID)   // MANUFACTURER_ROLE
@@ -116,14 +170,14 @@ getHistory(bytes32 id) → Checkpoint[]                               // public 
 
 Statuses: `Manufactured`, `InWarehouse`, `InTransit`, `ReceivedByDistributor`, `ReceivedByRetailer`, `SoldToCustomer`, `Recalled`, `Suspicious`.
 
-## 5. Deployment
+## 6. Deployment
 
 - **Contract** → deploy via Remix (see [`contracts/README.md`](contracts/README.md)). Optional: verify on Etherscan from the Remix plugin.
 - **Frontend** → already deployed. Any push to `main` that changes `web-static/` triggers [`.github/workflows/pages.yml`](.github/workflows/pages.yml), which uploads `web-static/` to GitHub Pages.
 
 To deploy elsewhere (Netlify, Cloudflare Pages, S3, nginx) just point the host at `web-static/` — no build step.
 
-## 6. Frontend JS modules
+## 7. Frontend JS modules
 
 | File | Responsibility |
 | --- | --- |
@@ -133,7 +187,7 @@ To deploy elsewhere (Netlify, Cloudflare Pages, S3, nginx) just point the host a
 | [`web-static/js/ipfs.js`](web-static/js/ipfs.js) | `IPFS.uploadFile`, `IPFS.uploadJson` against web3.storage; falls back to `mock://` CIDs when the token is empty so the form still works for demos |
 | [`web-static/js/ui.js`](web-static/js/ui.js) | `Toast.{info,success,error}`, sidebar/topbar injection (`renderShell`), `renderTimeline`, `statusBadge`, and the "Demo not deployed" banner (`renderConfigBanner`) auto-shown when `CONTRACT_ADDRESS` is unconfigured |
 
-## 7. End-to-end smoke test
+## 8. End-to-end smoke test
 
 1. Deploy `SupplyChain.sol` to Sepolia in Remix; paste the address into `web-static/js/config.js`.
 2. Open the live site, connect the admin wallet → `admin.html` → grant `MANUFACTURER_ROLE` to a second wallet.
@@ -143,7 +197,7 @@ To deploy elsewhere (Netlify, Cloudflare Pages, S3, nginx) just point the host a
 6. Distributor wallet sees the owner controls on the detail page; submit a status update. Reload the public verify page — the new checkpoint appears with an Etherscan-linkable actor.
 7. Try updating from a third, unrelated wallet → tx reverts with `not current owner`, UI shows an error toast.
 
-## 8. Security notes
+## 9. Security notes
 
 - All on-chain writes are gated by OpenZeppelin `AccessControl` roles or an `onlyOwnerOf(productId)` modifier.
 - `nonReentrant` on transfer/status as defensive hardening (no value flows today).
