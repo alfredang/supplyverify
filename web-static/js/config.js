@@ -2,10 +2,21 @@
 window.APP_CONFIG = {
   CHAIN_ID: 11155111, // 11155111 = Sepolia, 31337 = Hardhat local
   CHAIN_NAME: "Sepolia",
-  RPC_URL: "https://rpc.sepolia.org",
+  // Public Sepolia RPCs — first that responds is used. Rate-limit-resistant.
+  RPC_URLS: [
+    "https://ethereum-sepolia-rpc.publicnode.com",
+    "https://sepolia.gateway.tenderly.co",
+    "https://rpc.sepolia.org",
+  ],
   CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000000",
   WEB3_STORAGE_TOKEN: "", // optional — if empty, uploads return mock CIDs
   EXPLORER: "https://sepolia.etherscan.io",
+};
+
+// Is the contract address configured (non-zero)?
+window.isContractConfigured = function () {
+  const a = (window.APP_CONFIG.CONTRACT_ADDRESS || "").toLowerCase();
+  return /^0x[0-9a-f]{40}$/.test(a) && a !== "0x" + "0".repeat(40);
 };
 
 window.STATUS_LABELS = [

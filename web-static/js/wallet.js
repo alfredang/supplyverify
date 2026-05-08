@@ -78,7 +78,16 @@ window.Wallet = (function () {
   }
 
   function getReadProvider() {
-    return new ethers.JsonRpcProvider(window.APP_CONFIG.RPC_URL);
+    const urls = window.APP_CONFIG.RPC_URLS || [window.APP_CONFIG.RPC_URL].filter(Boolean);
+    if (urls.length > 1 && ethers.FallbackProvider) {
+      const providers = urls.map((u, i) => ({
+        provider: new ethers.JsonRpcProvider(u),
+        priority: i + 1,
+        stallTimeout: 1500,
+      }));
+      return new ethers.FallbackProvider(providers, undefined, { quorum: 1 });
+    }
+    return new ethers.JsonRpcProvider(urls[0]);
   }
 
   function get() {
@@ -89,8 +98,13 @@ window.Wallet = (function () {
     if (!host) return;
     function paint() {
       if (address) {
-        host.innerHTML = `<button class="wallet-btn connected" id="walletBtn">${window.shortAddr(address)}</button>`;
-        host.querySelector("#walletBtn").onclick = disconnect;
+        host.innerHTML = `<button class="wallet-btn connected" id="walletBtn" title="Click to copy address">${window.shortAddr(address)}</button>`;
+        host.querySelector("#walletBtn").onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(address);
+            window.Toast && window.Toast.info("Address copied");
+          } catch {}
+        };
       } else {
         host.innerHTML = `<button class="wallet-btn" id="walletBtn">Connect Wallet</button>`;
         host.querySelector("#walletBtn").onclick = connect;

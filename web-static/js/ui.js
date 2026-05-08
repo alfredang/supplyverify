@@ -72,6 +72,29 @@ window.renderShell = function ({ title, active }) {
   if (window.lucide) window.lucide.createIcons();
 };
 
+// Yellow banner shown when CONTRACT_ADDRESS is not configured.
+window.renderConfigBanner = function () {
+  if (window.isContractConfigured && window.isContractConfigured()) return;
+  const main = document.querySelector(".app-main") || document.querySelector("main") || document.body;
+  if (main.querySelector("#config-banner")) return;
+  const div = document.createElement("div");
+  div.id = "config-banner";
+  div.style.cssText = "background:#78350f;border:1px solid #b45309;color:#fef3c7;padding:.75rem 1rem;border-radius:.5rem;margin-bottom:1rem;font-size:.875rem;display:flex;gap:.75rem;align-items:flex-start;";
+  div.innerHTML = `
+    <i data-lucide="info" style="width:1.25rem;height:1.25rem;flex-shrink:0;color:#fbbf24"></i>
+    <div>
+      <strong>Demo not connected to a deployed contract.</strong>
+      Deploy <code style="background:#451a03;padding:.1rem .3rem;border-radius:.25rem">contracts/SupplyChain.sol</code>
+      to Sepolia and set <code style="background:#451a03;padding:.1rem .3rem;border-radius:.25rem">CONTRACT_ADDRESS</code>
+      in <code style="background:#451a03;padding:.1rem .3rem;border-radius:.25rem">js/config.js</code>.
+      Wallet connect, navigation, and form UI still work; chain reads/writes will fail until configured.
+    </div>`;
+  main.insertBefore(div, main.firstChild);
+  if (window.lucide) window.lucide.createIcons();
+  // Auto-show config banner on dashboard pages
+  setTimeout(() => window.renderConfigBanner && window.renderConfigBanner(), 0);
+};
+
 window.statusBadge = function (status) {
   const label = window.STATUS_LABELS[Number(status)] || "Unknown";
   return `<span class="badge badge-${Number(status)}">${label}</span>`;

@@ -32,9 +32,8 @@ const content = document.getElementById("content");
 lucide.createIcons();
 
 (async () => {
-  if (!id || !/^0x[a-fA-F0-9]{64}$/.test(id)) {
-    return notFound();
-  }
+  if (!window.isContractConfigured()) return notConfigured();
+  if (!id || !/^0x[a-fA-F0-9]{64}$/.test(id)) return notFound();
   try {
     const c = window.Chain.readContract();
     const [verifyRes, history] = await Promise.all([c.verify(id), c.getHistory(id)]);
@@ -43,9 +42,30 @@ lucide.createIcons();
     if (!exists) return notFound();
     render(product, history);
   } catch (e) {
-    notFound();
+    chainError(e);
   }
 })();
+
+function notConfigured() {
+  content.innerHTML = `
+    <div class="card p-8 text-center">
+      <i data-lucide="info" class="mx-auto" style="width:2.5rem;height:2.5rem;color:#fbbf24"></i>
+      <h1 class="mt-3 text-xl font-semibold text-white">Demo not deployed</h1>
+      <p class="text-slate-300 mt-1 text-sm">This site is wired up but the SupplyChain contract has not been deployed yet, so on-chain verification is unavailable.</p>
+      <p class="mt-3 font-mono text-xs break-all text-slate-500">${id || ""}</p>
+    </div>`;
+  lucide.createIcons();
+}
+
+function chainError(e) {
+  content.innerHTML = `
+    <div class="card p-8 text-center">
+      <i data-lucide="shield-alert" class="mx-auto" style="width:2.5rem;height:2.5rem;color:#fbbf24"></i>
+      <h1 class="mt-3 text-xl font-semibold text-white">Could not reach the network</h1>
+      <p class="text-slate-300 mt-1 text-sm">RPC call failed: ${(e && e.shortMessage) || (e && e.message) || "unknown error"}</p>
+    </div>`;
+  lucide.createIcons();
+}
 
 function notFound() {
   content.innerHTML = `
