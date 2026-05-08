@@ -28,8 +28,6 @@ supplychain/
 └── web-static/     # Frontend — pure HTML/CSS/JS (deployed to GitHub Pages)
 ```
 
-> An alternative Next.js/TypeScript implementation lives in `web/` for reference. It is not part of the live demo.
-
 ## 1. Smart contract
 
 ```bash
