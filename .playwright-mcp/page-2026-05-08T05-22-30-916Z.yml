@@ -1,0 +1,58 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Supply Verify" [ref=e4] [cursor=pointer]:
+        - /url: index.html
+        - img [ref=e5]
+        - generic [ref=e8]: Supply Verify
+      - generic [ref=e9]:
+        - link "Scan" [ref=e10] [cursor=pointer]:
+          - /url: scan.html
+        - link "Dashboard" [ref=e11] [cursor=pointer]:
+          - /url: manufacturer.html
+        - button "Connect Wallet" [ref=e13] [cursor=pointer]
+  - generic [ref=e14]:
+    - generic [ref=e16]:
+      - img [ref=e17]
+      - text: Blockchain-verified provenance
+    - heading "Trustless product authenticity, from factory to customer." [level=1] [ref=e20]:
+      - text: Trustless product authenticity,
+      - text: from factory to customer.
+    - paragraph [ref=e21]: Register, transfer, and verify physical goods on Ethereum. Anyone with a phone can scan a QR code to confirm a product is real — and trace where it has been.
+    - generic [ref=e22]:
+      - link "Open dashboard" [ref=e23] [cursor=pointer]:
+        - /url: manufacturer.html
+      - link "Scan a QR" [ref=e24] [cursor=pointer]:
+        - /url: scan.html
+  - generic [ref=e26]:
+    - generic [ref=e27]:
+      - img [ref=e28]
+      - heading "On-chain registry" [level=3] [ref=e32]
+      - paragraph [ref=e33]: Manufacturers register every product with a unique, tamper-proof ID.
+    - generic [ref=e34]:
+      - img [ref=e35]
+      - heading "End-to-end tracking" [level=3] [ref=e40]
+      - paragraph [ref=e41]: Distributors and retailers append checkpoints as goods move.
+    - generic [ref=e42]:
+      - img [ref=e43]
+      - heading "Authenticity proof" [level=3] [ref=e46]
+      - paragraph [ref=e47]: Customers verify provenance instantly — no login required.
+    - generic [ref=e48]:
+      - img [ref=e49]
+      - heading "QR-first UX" [level=3] [ref=e55]
+      - paragraph [ref=e56]: Every product gets a unique QR linking to a public verify page.
+    - generic [ref=e57]:
+      - img [ref=e58]
+      - heading "Role-based access" [level=3] [ref=e63]
+      - paragraph [ref=e64]: OpenZeppelin AccessControl gates writes to authorised wallets.
+    - generic [ref=e65]:
+      - img [ref=e66]
+      - heading "Etherscan links" [level=3] [ref=e69]
+      - paragraph [ref=e70]: Every action surfaces the underlying transaction hash.
+  - contentinfo [ref=e71]:
+    - generic [ref=e72]:
+      - generic [ref=e73]:
+        - text: Powered by
+        - link "Tertiary Infotech Academy Pte Ltd" [ref=e74] [cursor=pointer]:
+          - /url: https://www.tertiarycourses.com.sg/
+      - generic [ref=e75]: Sepolia network
