@@ -1,5 +1,7 @@
 # Supply Chain Product Identification System
 
+![Supply Verify landing page](docs/screenshot.png)
+
 Blockchain-backed product authenticity, ownership, and movement tracking. Manufacturers register products on-chain; distributors and retailers append checkpoints; customers verify via QR code without a wallet.
 
 Reference inspiration: <https://github.com/shang-yi-qian/Product-Verify>
